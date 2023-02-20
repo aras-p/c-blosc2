@@ -77,11 +77,13 @@ if(NOT WIN32)
 endif()
 
 cmake_minimum_required(VERSION 3.16.3)
-if(${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.4)
-  cmake_policy(SET CMP0063 NEW)
+if(${CMAKE_VERSION} VERSION_LESS 3.16.3)
+    cmake_policy(VERSION ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION})
 endif()
 # The project can have ASM (zstd 1.5.2 is starting to use it)
-project(blosc LANGUAGES C ASM)
+project(blosc VERSION 2.6.1
+        DESCRIPTION "Blosc2 C compression library"
+        LANGUAGES C ASM)
 
 # parse the full version numbers from blosc2.h
 file(READ include/blosc2.h _blosc2_h_contents)
