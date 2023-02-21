@@ -29,6 +29,7 @@ int b2nd_serialize_meta(int8_t ndim, int64_t *shape, int32_t *chunkshape,
     BLOSC_ERROR(BLOSC2_ERROR_FAILURE);
   }
   size_t dtype_len0 = strlen(dtype);
+  printf("dtype_len0: %ld\n", dtype_len0);
   if (dtype_len0 > INT32_MAX) {
     BLOSC_TRACE_ERROR("dtype is too large (len > %d)", INT32_MAX);
     BLOSC_ERROR(BLOSC2_ERROR_FAILURE);
@@ -84,6 +85,10 @@ int b2nd_serialize_meta(int8_t ndim, int64_t *shape, int32_t *chunkshape,
   pmeta += dtype_len;
 
   int32_t slen = (int32_t) (pmeta - *smeta);
+  if (max_smeta_len != slen) {
+    BLOSC_TRACE_ERROR("meta len is incosistent!");
+    return BLOSC2_ERROR_FAILURE;
+  }
   return (int)slen;
 }
 
@@ -92,7 +97,7 @@ int b2nd_deserialize_meta(uint8_t *smeta, int32_t smeta_len, int8_t *ndim, int64
                           int32_t *chunkshape, int32_t *blockshape, char **dtype, int8_t *dtype_format) {
   uint8_t *pmeta = smeta;
 
-  // Check that we have an array with 5 entries (version, ndim, shape, chunkshape, blockshape)
+  // Check that we have an array with 7 entries (version, ndim, shape, chunkshape, blockshape, dtype_format, dtype)
   pmeta += 1;
 
   // version entry
@@ -138,13 +143,17 @@ int b2nd_deserialize_meta(uint8_t *smeta, int32_t smeta_len, int8_t *ndim, int64
   if (pmeta - smeta < smeta_len) {
     // dtype info is here
     *dtype_format = (int8_t) *(pmeta++);
-    pmeta += 1;
+    uint8_t msgpack_format = (uint8_t) *(pmeta++);
+    if (msgpack_format != 0xdb) {
+      BLOSC_TRACE_ERROR("meta str_len is inconsistent!");
+      return BLOSC2_ERROR_FAILURE;
+    }
     int dtype_len;
     swap_store(&dtype_len, pmeta, sizeof(int32_t));
     pmeta += sizeof(int32_t);
     *dtype = malloc(dtype_len + 1);
     char* dtype_ = *dtype;
-    memcpy(dtype_, (char*)pmeta, dtype_len);
+    memcpy(dtype_, (void*)pmeta, dtype_len);
     dtype_[dtype_len] = '\0';
     pmeta += dtype_len;
   }
